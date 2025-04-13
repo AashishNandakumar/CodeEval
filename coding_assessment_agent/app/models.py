@@ -10,6 +10,7 @@ class Session(Base):
     id = Column(Integer, primary_key=True, index=True)
     start_time = Column(DateTime(timezone=True), server_default=func.now())
     end_time = Column(DateTime(timezone=True), nullable=True)
+    problem_statement = Column(Text, nullable=False) # Added field for the initial question
     # Link to report (one-to-one)
     report = relationship("Report", back_populates="session", uselist=False)
     # Link to interactions (one-to-many)

@@ -31,7 +31,12 @@ async def process_websocket_message(
             logger.info(f"Processing code_update for session {session_id}")
             current_code = payload.code
 
-            # 1. Save the interaction and snapshot
+            # 1. Get the *previous* interaction with a snapshot (before saving the current one)
+            # This interaction holds the 'old_code' for comparison.
+            previous_interaction_with_snapshot = await interaction_service.get_last_interaction_with_snapshot(db, session_id)
+            logger.debug(f"Previous interaction with snapshot found: ID {previous_interaction_with_snapshot.id if previous_interaction_with_snapshot else 'None'}")
+
+            # 2. Save the new interaction and snapshot for the current update
             interaction_record = await interaction_service.create_interaction(
                 db,
                 schemas.InteractionCreate(
@@ -48,30 +53,26 @@ async def process_websocket_message(
                 )
             )
 
-            # 2. Check trigger logic
-            # Get the *previous* interaction that might have had a snapshot or represents the last prompt time
-            # This logic might need refinement: should we look for the last 'code_snapshot' type or just the very last one?
-            # Let's find the most recent interaction *before* the one we just created.
-            last_interaction = await interaction_service.get_last_interaction(db, session_id)
-
+            # 3. Check trigger logic using the previous interaction state
             # Find the code content associated with the last_interaction (if it has a snapshot)
-            previous_code_content = None
-            if last_interaction and last_interaction.code_snapshot:
-                 previous_code_content = last_interaction.code_snapshot.code_content
+            # previous_code_content = None # No longer needed here
+            # if last_interaction and last_interaction.code_snapshot:
+            #      previous_code_content = last_interaction.code_snapshot.code_content
 
             should_prompt = await trigger_logic.should_trigger_interaction(
                 current_code=current_code,
-                last_interaction=last_interaction
+                last_interaction=previous_interaction_with_snapshot # Pass the *previous* interaction
             )
 
             if should_prompt:
                 logger.info(f"Triggering interaction for session {session_id}")
-                # 3. Call AgentOrchestrator (Phase 5)
-                # Pass previous code content for diff calculation inside orchestrator
+                # 4. Call AgentOrchestrator
+                # Pass the previous code content (if available) for diff calculation inside orchestrator
+                previous_code = previous_interaction_with_snapshot.code_snapshot.code_content if previous_interaction_with_snapshot and previous_interaction_with_snapshot.code_snapshot else ""
                 await agent_orchestrator.request_question(
                     session_id=session_id,
                     current_code=current_code,
-                    previous_code=previous_code_content,
+                    previous_code=previous_code,
                     db=db
                 )
             else:

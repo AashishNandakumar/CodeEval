@@ -4,9 +4,9 @@ from sqlalchemy.orm import selectinload
 from app import models, schemas
 import datetime
 
-async def create_session(db: AsyncSession) -> models.Session:
-    """Creates a new session in the database."""
-    new_session = models.Session()
+async def create_session(db: AsyncSession, problem_statement: str) -> models.Session:
+    """Creates a new session in the database with the given problem statement."""
+    new_session = models.Session(problem_statement=problem_statement)
     db.add(new_session)
     await db.commit()
     await db.refresh(new_session)

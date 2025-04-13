@@ -1,0 +1,245 @@
+:root {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light dark;
+  color: rgba(255, 255, 255, 0.87);
+  background-color: #242424;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  display: flex;
+  place-items: center;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+  width: 100%; /* Ensure root takes full width */
+}
+
+nav ul {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1rem 0;
+  text-align: left; /* Align nav links left */
+}
+
+nav li {
+  display: inline;
+  margin-right: 1rem;
+}
+
+nav a {
+  color: #646cff;
+  text-decoration: none;
+}
+nav a:hover {
+  color: #535bf2;
+}
+
+hr {
+  border: none;
+  border-top: 1px solid #444;
+  margin-bottom: 2rem;
+}
+
+/* General Container Styling */
+.container {
+  text-align: left;
+  padding: 1rem;
+  border: 1px solid #444;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  background-color: #2f2f2f; /* Slightly lighter background for containers */
+}
+
+/* Button Styling */
+button {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 0.6em 1.2em;
+  font-size: 1em;
+  font-weight: 500;
+  font-family: inherit;
+  background-color: #1a1a1a;
+  cursor: pointer;
+  transition: border-color 0.25s, background-color 0.25s;
+  margin: 5px;
+}
+button:hover {
+  border-color: #646cff;
+  background-color: #3a3a3a;
+}
+button:focus,
+button:focus-visible {
+  outline: 4px auto -webkit-focus-ring-color;
+}
+button:disabled {
+  background-color: #333;
+  color: #777;
+  border-color: #444;
+  cursor: not-allowed;
+}
+
+/* Textarea Styling */
+textarea {
+  width: 100%;
+  padding: 10px;
+  margin-top: 5px;
+  margin-bottom: 10px;
+  border-radius: 4px;
+  border: 1px solid #555;
+  background-color: #1e1e1e; /* Darker background for text areas */
+  color: #f0f0f0;
+  font-family: "Courier New", Courier, monospace;
+  font-size: 14px;
+  resize: vertical; /* Allow vertical resize */
+  box-sizing: border-box; /* Include padding and border in the element's total width and height */
+}
+
+/* Code Block Styling */
+pre code {
+  display: block;
+  white-space: pre-wrap;
+  background: #1e1e1e;
+  padding: 15px;
+  border-radius: 4px;
+  border: 1px solid #444;
+  font-family: "Courier New", Courier, monospace;
+  font-size: 14px;
+  color: #f0f0f0;
+  text-align: left;
+}
+
+/* Error Message Styling */
+.error-message {
+  color: #ff6b6b;
+  background-color: rgba(255, 107, 107, 0.1);
+  border: 1px solid #ff6b6b;
+  padding: 10px;
+  border-radius: 4px;
+  margin-top: 10px;
+  text-align: left;
+}
+
+/* Status Message Styling */
+.status-message {
+  font-style: italic;
+  color: #aaa;
+  margin-bottom: 10px;
+  text-align: left;
+}
+
+/* Specific Component Adjustments */
+.home-container,
+.report-container,
+.session-container {
+  text-align: left;
+}
+
+.session-container .problem-statement,
+.session-container .question-block {
+  background-color: #383838; /* Different background for specific blocks */
+  padding: 15px;
+  margin-bottom: 15px;
+  border-radius: 4px;
+  border: 1px solid #555;
+}
+
+.session-container h2 {
+  margin-top: 0;
+  border-bottom: 1px solid #555;
+  padding-bottom: 5px;
+  margin-bottom: 10px;
+}
+
+.report-container h2 {
+  margin-top: 1.5rem;
+  border-bottom: 1px solid #555;
+  padding-bottom: 5px;
+  margin-bottom: 10px;
+}
+
+.report-container .interaction-block {
+  border: 1px solid #555;
+  background-color: #333;
+  margin-bottom: 10px;
+  padding: 15px;
+  border-radius: 4px;
+}
+
+/* Dark Mode Specific (Defaults are dark already, but can add overrides) */
+@media (prefers-color-scheme: light) {
+  :root {
+    color: #213547;
+    background-color: #ffffff;
+  }
+  nav a {
+    color: #747bff;
+  }
+  nav a:hover {
+    color: #535bf2;
+  }
+  button {
+    background-color: #f9f9f9;
+  }
+  button:hover {
+    border-color: #747bff;
+    background-color: #eee;
+  }
+  button:disabled {
+    background-color: #ddd;
+    color: #888;
+    border-color: #ccc;
+  }
+  hr {
+    border-top: 1px solid #ddd;
+  }
+  .container {
+    border: 1px solid #ddd;
+    background-color: #f9f9f9;
+  }
+  textarea {
+    border: 1px solid #ccc;
+    background-color: #fff;
+    color: #333;
+  }
+  pre code {
+    background: #f0f0f0;
+    border: 1px solid #ddd;
+    color: #333;
+  }
+  .error-message {
+    color: #c0392b;
+    background-color: rgba(192, 57, 43, 0.1);
+    border: 1px solid #c0392b;
+  }
+  .status-message {
+    color: #555;
+  }
+  .session-container .problem-statement,
+  .session-container .question-block {
+    background-color: #eee;
+    border: 1px solid #ccc;
+  }
+  .session-container h2,
+  .report-container h2 {
+    border-bottom: 1px solid #ccc;
+  }
+  .report-container .interaction-block {
+    border: 1px solid #ccc;
+    background-color: #f0f0f0;
+  }
+}

@@ -38,7 +38,7 @@ class ContextManager:
         return '\n'.join(diff)
 
     async def prepare_context_for_question(
-        self, session_id: str, current_code: str, previous_code: Optional[str]
+        self, session_id: str, current_code: str, previous_code: Optional[str], problem_statement: str
     ) -> Dict[str, Any]:
         """Prepares context for the question generation prompt."""
         history_manager = get_redis_chat_history(session_id)
@@ -51,6 +51,7 @@ class ContextManager:
         # relevant_docs = await vector_db_client.similarity_search(query=diff, k=1, filter_metadata={...})
 
         context = {
+            "problem_statement": problem_statement,
             "code": current_code,
             "diff": diff if diff else "No changes detected or first submission.",
             "history": formatted_history,
@@ -59,7 +60,7 @@ class ContextManager:
         return context
 
     async def prepare_context_for_evaluation(
-        self, session_id: str, question: str, response: str, relevant_code: str
+        self, session_id: str, question: str, response: str, relevant_code: str, problem_statement: str
     ) -> Dict[str, Any]:
         """Prepares context for the evaluation prompt."""
         history_manager = get_redis_chat_history(session_id)
@@ -72,6 +73,7 @@ class ContextManager:
         # relevant_docs = await vector_db_client.similarity_search(query=f"{question}\n{response}", k=2)
 
         context = {
+            "problem_statement": problem_statement,
             "code": relevant_code,
             "history": formatted_history,
             "question": question,
@@ -81,7 +83,7 @@ class ContextManager:
         return context
 
     async def prepare_context_for_report(
-        self, session_id: str, final_code: str
+        self, session_id: str, final_code: str, problem_statement: str
     ) -> Dict[str, Any]:
         """Prepares context for the final report generation prompt."""
         history_manager = get_redis_chat_history(session_id)
@@ -91,6 +93,7 @@ class ContextManager:
         formatted_full_history = self._format_history(full_history_messages) # Use basic for now
 
         context = {
+            "problem_statement": problem_statement,
             "final_code": final_code,
             "full_history": formatted_full_history,
         }
@@ -99,14 +102,18 @@ class ContextManager:
     async def add_user_message(self, session_id: str, message: str):
         """Adds a user message to the chat history."""
         history_manager = get_redis_chat_history(session_id)
-        await history_manager.aadd_user_message(message)
-        logger.debug(f"Added user message to history for session {session_id}")
+        history_manager.add_user_message(message)
+        logger.debug(f"Added user message for session {session_id}")
 
     async def add_ai_message(self, session_id: str, message: str):
-        """Adds an AI message (question or evaluation) to the chat history."""
+        """Adds an AI message to the chat history."""
         history_manager = get_redis_chat_history(session_id)
-        await history_manager.aadd_ai_message(message)
-        logger.debug(f"Added AI message to history for session {session_id}")
+        history_manager.add_ai_message(message)
+        logger.debug(f"Added AI message for session {session_id}")
+
+    async def get_full_history_summary(self, session_id: str) -> str:
+        # Implementation of get_full_history_summary method
+        pass
 
 # Singleton instance or inject via dependency
 context_manager = ContextManager()

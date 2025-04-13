@@ -49,10 +49,10 @@ class ReportRead(ReportBase):
 
 # --- Session Schemas ---
 class SessionBase(BaseSchema):
-    pass # No specific fields in base session for now
+    problem_statement: str # Added field
 
 class SessionCreate(SessionBase):
-    pass # No input needed to create a session initially
+    pass # Inherits problem_statement from SessionBase
 
 class SessionRead(SessionBase):
     id: int
@@ -60,15 +60,16 @@ class SessionRead(SessionBase):
     end_time: Optional[datetime.datetime] = None
     report: Optional[ReportRead] = None
     interactions: List[InteractionRead] = []
+    # problem_statement is inherited from SessionBase
 
 # --- WebSocket Payload Schemas ---
 class CodeUpdatePayload(BaseModel):
-    session_id: str # Using string here as it comes from WebSocket path param
+    session_id: str | int # Using string here as it comes from WebSocket path param
     code: str
     # potentially add file path, cursor position etc.
 
 class ResponseSubmittedPayload(BaseModel):
-    session_id: str
+    session_id: str | int
     interaction_id: int # ID of the interaction (question) being responded to
     response: str
 

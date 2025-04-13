@@ -1,6 +1,10 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from sqlalchemy.orm import selectinload, joinedload
 from app import models, schemas
+import logging
+
+logger = logging.getLogger(__name__)
 
 async def create_interaction(
     db: AsyncSession,
@@ -58,11 +62,30 @@ async def get_code_snapshot(db: AsyncSession, snapshot_id: int) -> models.CodeSn
     return result.scalar_one_or_none()
 
 async def get_last_interaction(db: AsyncSession, session_id: int) -> models.Interaction | None:
-    """Retrieves the most recent interaction for a given session."""
+    """Retrieves the most recent interaction for a given session, eager loading snapshot."""
+    logger.debug(f"Fetching last interaction for session {session_id}")
     result = await db.execute(
         select(models.Interaction)
         .where(models.Interaction.session_id == session_id)
+        .options(selectinload(models.Interaction.code_snapshot))
         .order_by(models.Interaction.timestamp.desc())
         .limit(1)
     )
-    return result.scalar_one_or_none()
+    interaction = result.scalar_one_or_none()
+    logger.debug(f"Found last interaction: {interaction.id if interaction else 'None'}")
+    return interaction
+
+async def get_last_interaction_with_snapshot(db: AsyncSession, session_id: int) -> models.Interaction | None:
+    """Retrieves the most recent interaction FOR A GIVEN SESSION that has an associated code snapshot."""
+    logger.debug(f"Fetching last interaction with snapshot for session {session_id}")
+    result = await db.execute(
+        select(models.Interaction)
+        .join(models.Interaction.code_snapshot)
+        .where(models.Interaction.session_id == session_id)
+        .options(joinedload(models.Interaction.code_snapshot))
+        .order_by(models.Interaction.timestamp.desc())
+        .limit(1)
+    )
+    interaction = result.scalar_one_or_none()
+    logger.debug(f"Found last interaction with snapshot: {interaction.id if interaction else 'None'}")
+    return interaction

@@ -17,6 +17,7 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str, db: AsyncSes
     try:
         while True:
             data = await websocket.receive_json()
+            print(f"Received message from {session_id}: {data}")
             logger.debug(f"Received message from {session_id}: {data}")
 
             # Basic validation / routing
