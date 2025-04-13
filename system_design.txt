@@ -1,0 +1,242 @@
+﻿Okay, here is a detailed step-by-step plan for building the backend using FastAPI, PostgreSQL, Redis, ChromaDB (as our example Vector DB), Langchain, and OpenAI. This plan is designed for a developer to follow.
+Assumptions:
+* Python 3.9+ is installed.
+* pip and venv (or conda) are available.
+* PostgreSQL server is accessible (can be local or cloud).
+* Redis server is accessible (can be local or cloud).
+* You have an OpenAI API key.
+________________
+Backend Development Plan
+Phase 1: Project Setup & Foundational Configuration
+1. Create Project Directory:
+Bash
+mkdir coding_assessment_agent
+cd coding_assessment_agent
+
+2. Set up Virtual Environment:
+Bash
+python -m venv venv
+source venv/bin/activate  # On Windows use `venv\Scripts\activate`
+
+3. Create Project Structure:
+coding_assessment_agent/
+├── app/
+│   ├── __init__.py
+│   ├── main.py           # FastAPI app instance
+│   ├── config.py         # Environment variables & settings
+│   ├── database.py       # DB session management (SQLAlchemy, Redis, Chroma)
+│   ├── models.py         # SQLAlchemy ORM models
+│   ├── schemas.py        # Pydantic validation models
+│   ├── prompts.py        # Langchain prompt templates
+│   ├── routers/
+│   │   ├── __init__.py
+│   │   ├── sessions.py     # REST endpoints for sessions/reports
+│   │   └── websocket.py    # WebSocket endpoint
+│   ├── services/
+│   │   ├── __init__.py
+│   │   ├── session_service.py # CRUD for Session model
+│   │   ├── interaction_service.py # CRUD for Interaction/Snapshot models
+│   │   ├── trigger_logic.py   # Logic to decide when to ask questions
+│   │   ├── context_manager.py # Handles Langchain memory & context retrieval
+│   │   ├── agent_orchestrator.py # Core Langchain logic execution
+│   │   └── vector_db_client.py # Wrapper for ChromaDB operations
+│   └── websocket_manager.py # Manages active WebSocket connections
+├── tests/                # Pytest tests
+├── .env                  # Environment variables (DO NOT COMMIT)
+├── .gitignore
+├── requirements.txt
+└── README.md
+
+4. Install Dependencies: Create requirements.txt with:
+fastapi
+uvicorn[standard] # Includes websockets, http-tools, etc.
+sqlalchemy        # ORM for PostgreSQL
+asyncpg           # Async PostgreSQL driver for SQLAlchemy
+psycopg2-binary   # Standard sync driver (sometimes needed by tools like Alembic)
+redis             # Redis client library (use async version like `redis[hiredis]`)
+langchain
+langchain-openai
+langchain-community # For ChromaDB integration, potentially other tools
+chromadb          # Vector database client
+openai
+python-dotenv     # For loading .env files
+pydantic          # Comes with FastAPI, but explicitly list for settings
+alembic           # For DB migrations
+pytest            # For testing
+pytest-asyncio    # For testing async code
+httpx             # For TestClient
+# Add any other necessary libraries (e.g., for AST parsing if used in trigger logic)
+Install them:
+Bash
+pip install -r requirements.txt
+
+5. Configure Environment Variables (.env file):
+Code snippet
+DATABASE_URL=postgresql+asyncpg://user:password@host:port/dbname
+REDIS_URL=redis://localhost:6379/0
+OPENAI_API_KEY=your_openai_api_key_here
+# Chroma settings (can be path or URL depending on setup)
+CHROMA_PERSIST_DIRECTORY=./chroma_db_store
+# Optional: Secret key for JWT if adding auth later
+# SECRET_KEY=your_secret_key
+
+6. Implement Settings Loading (app/config.py): Use Pydantic's BaseSettings to load variables from .env.
+Python
+# app/config.py
+from pydantic_settings import BaseSettings
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+class Settings(BaseSettings):
+   database_url: str
+   redis_url: str
+   openai_api_key: str
+   chroma_persist_directory: str = "./chroma_db_store"
+   # Add other settings as needed
+
+   class Config:
+       env_file = ".env"
+       extra = "ignore" # Ignore extra fields not defined in the model
+
+settings = Settings()
+
+7. Basic FastAPI App Setup (app/main.py):
+Python
+# app/main.py
+from fastapi import FastAPI
+# Import routers later
+
+app = FastAPI(title="Coding Assessment Agent Backend")
+
+@app.get("/")
+async def root():
+   return {"message": "Assessment Agent Backend is running"}
+
+# Include routers later:
+# from app.routers import sessions, websocket
+# app.include_router(sessions.router)
+# app.include_router(websocket.router)
+
+8. Setup .gitignore: Add venv/, .env, __pycache__/, *.pyc, chroma_db_store/ etc.
+Phase 2: Database Setup & Data Modeling
+   1. PostgreSQL Setup:
+   * Ensure PostgreSQL server is running.
+   * Create the database and user specified in DATABASE_URL.
+   2. Redis Setup:
+   * Ensure Redis server is running and accessible via REDIS_URL.
+   3. Database Connection Management (app/database.py):
+   * Setup async SQLAlchemy engine and session factory.
+   * Setup async Redis connection pool.
+   * Setup ChromaDB client instance (using langchain_community.vectorstores.Chroma and langchain_openai.OpenAIEmbeddings).
+Python
+# app/database.py (Simplified Example)
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.orm import sessionmaker
+import redis.asyncio as redis
+from langchain_openai import OpenAIEmbeddings
+from langchain_community.vectorstores import Chroma
+from app.config import settings
+
+# SQLAlchemy Async Engine
+async_engine = create_async_engine(settings.database_url, echo=True) # echo=True for debugging
+AsyncSessionFactory = sessionmaker(
+   bind=async_engine, class_=AsyncSession, expire_on_commit=False
+)
+
+# Redis Async Connection Pool
+redis_pool = redis.ConnectionPool.from_url(settings.redis_url, decode_responses=True)
+
+# ChromaDB Client & Langchain Vector Store
+embeddings = OpenAIEmbeddings(openai_api_key=settings.openai_api_key)
+vector_store = Chroma(
+   persist_directory=settings.chroma_persist_directory,
+   embedding_function=embeddings
+)
+
+async def get_db() -> AsyncSession:
+   async with AsyncSessionFactory() as session:
+       yield session
+
+async def get_redis():
+   return redis.Redis(connection_pool=redis_pool)
+
+def get_vector_store():
+   # Chroma client might need initialization checks in a real app
+   return vector_store
+
+   4. Define SQLAlchemy Models (app/models.py): Define Base and classes for Session, Interaction, CodeSnapshot, Report inheriting from Base. Use appropriate types (e.g., String, Text, Integer, DateTime, JSONB for scores/metrics). Add relationships.
+   5. Define Pydantic Schemas (app/schemas.py): Define schemas for request validation (e.g., CodeUpdatePayload, ResponseSubmittedPayload) and response formatting (e.g., SessionRead, ReportRead, QuestionResponse).
+   6. Setup Migrations (Alembic):
+Bash
+alembic init alembic
+
+      * Configure alembic.ini (set sqlalchemy.url).
+      * Edit alembic/env.py to import your SQLAlchemy Base and set target_metadata = Base.metadata. Adapt for async if needed (refer to Alembic async docs).
+      * Create initial migration: alembic revision --autogenerate -m "Initial migration"
+      * Apply migration: alembic upgrade head
+Phase 3: Core API & WebSocket Implementation
+      1. Implement CRUD Services (app/services/session_service.py, app/services/interaction_service.py): Create async functions that take a db: AsyncSession and perform database operations (Create, Read, Update) for your models. Use SQLAlchemy Core/ORM async methods.
+      2. Implement REST Endpoints (app/routers/sessions.py):
+      * Create an APIRouter.
+      * Define endpoints (/sessions, /sessions/{session_id}/report, etc.).
+      * Use FastAPI's dependency injection (Depends(get_db)) to get DB sessions.
+      * Call service functions for logic. Use Pydantic schemas for request bodies and responses (response_model).
+      3. Implement WebSocket Manager (app/websocket_manager.py):
+      * Class to track active connections (e.g., Dict[str, WebSocket]).
+      * Methods: connect(session_id, websocket), disconnect(session_id), send_personal_message(session_id, message: dict).
+      * Note: For scaling, this simple dictionary needs replacement with Redis Pub/Sub.
+      4. Implement WebSocket Endpoint (app/routers/websocket.py):
+      * Create an APIRouter.
+      * Define /ws/session/{session_id} endpoint using @router.websocket(...).
+      * Accept connection using websocket.accept().
+      * Register connection with WebSocketManager.
+      * Enter a while True loop to receive messages (websocket.receive_json()).
+      * Handle WebSocketDisconnect exceptions.
+      * Parse incoming JSON, determine message type (code_update, response_submitted).
+      * Call the EventProcessor service to handle the message logic.
+      * Unregister connection on disconnect (in finally block).
+      5. Include Routers in app/main.py: Import and include the session and websocket routers in the main FastAPI app instance.
+Phase 4: Event Handling & Trigger Logic
+      1. Implement InteractionTriggerLogic (app/services/trigger_logic.py):
+      * Define function should_trigger_interaction(session_id, code_update_data, last_interaction_time) -> bool.
+      * Implement rules: Check time elapsed, size of code diff (use difflib), potentially analyze code structure changes (more complex, maybe later). Keep state (like last_interaction_time) perhaps in Redis or the Session model.
+      2. Implement EventProcessor (app/services/event_processor.py):
+      * Create an async function process_websocket_message(session_id: str, message: dict, db: AsyncSession, agent_orchestrator, ...).
+      * If message type is code_update:
+      * Save CodeSnapshot (using interaction_service).
+      * Get last interaction time.
+      * Call should_trigger_interaction.
+      * If True, call agent_orchestrator.request_question(session_id, code_update_data, db).
+      * If message type is response_submitted:
+      * Call agent_orchestrator.evaluate_response(session_id, response_data, db).
+Phase 5: Langchain & AI Integration
+      1. Implement Vector DB Client Wrapper (app/services/vector_db_client.py):
+      * Wrap the Langchain Chroma instance (get_vector_store from database.py).
+      * Provide async methods: add_document(text, metadata), similarity_search(query, k, filter_metadata). Handle Chroma's sync/async nature if needed (may require run_in_executor).
+      2. Define Prompt Templates (app/prompts.py): Create ChatPromptTemplate instances for question generation, evaluation, and report generation, as shown in the previous LLD refinement.
+      3. Implement Langchain Setup: Ensure LLM, Embeddings, Vector Store, Redis connection are initialized correctly in app/database.py or a dedicated setup function.
+      4. Implement ContextManager (app/services/context_manager.py):
+      * Inject vector_db_client, redis_client.
+      * Method prepare_context_for_question(session_id, diff, code): Loads chat history (RedisChatMessageHistory), searches vector DB for relevant docs based on diff/code, formats results into a context dictionary.
+      * Method prepare_context_for_evaluation(session_id, question, response): Similar, but searches vector DB based on question/response.
+      * Method get_full_history_summary(session_id): Retrieves and formats the entire conversation history for the final report.
+      * Implement logic for context window management (summarization, truncation).
+      5. Implement AgentOrchestrator (app/services/agent_orchestrator.py):
+      * Inject llm, context_manager, interaction_service, websocket_manager.
+      * request_question(session_id, code_update_data, db): Gets context, creates/runs LLMChain with question prompt, saves pending interaction (e.g., in Redis with interaction ID or directly in DB), sends question via websocket_manager.
+      * evaluate_response(session_id, response_data, db): Gets context (incl. original question from pending store/DB), creates/runs LLMChain with evaluation prompt, parses JSON result, updates Interaction record in DB via interaction_service, updates chat memory.
+      * generate_report(session_id, db): Gets final code, gets full history summary, creates/runs LLMChain with report prompt, saves Report via session_service or interaction_service.
+Phase 6: Integration, Refinement & Testing
+      1. Connect Components: Ensure all services are correctly injected (using FastAPI's Depends) and called in the routers and other services. Trace the flow of a code_update and response_submitted message.
+      2. Implement Async Operations: Double-check that all potentially blocking I/O calls (DB, Redis, Vector DB, OpenAI API) are await-ed correctly. Use asyncio.gather if parallel I/O is needed.
+      3. Error Handling & Logging: Add try...except blocks around external calls (LLM, DBs) and WebSocket operations. Log errors and important events using Python's logging module configured in main.py. Send user-friendly error messages back via WebSocket if appropriate.
+      4. Write Unit Tests (tests/): Use pytest and pytest-asyncio. Mock database sessions, Redis, LLM calls (unittest.mock). Test individual service functions, trigger logic, prompt formatting.
+      5. Write Integration Tests (tests/): Use FastAPI's TestClient for REST endpoints and WebSocketTestClient for WebSocket interactions. Test the flow from receiving a WebSocket message to triggering (mocked) LLM calls and DB updates.
+Phase 7: Documentation & Deployment Prep
+      1. Code Comments & Docstrings: Add documentation to explain complex parts.
+      2. README: Update README.md with detailed setup, environment variable explanations, how to run the server (uvicorn app.main:app --reload), and how to run tests. Include basic API endpoint documentation (or rely on FastAPI's /docs).
+      3. Containerize (Dockerfile): Create a Dockerfile to build an image of the application for easier deployment.
+      4. Deployment Considerations: Plan for hosting (cloud provider), managed databases (PostgreSQL, Redis), persistent storage for ChromaDB (or switch to a managed Vector DB), process management (Gunicorn/Uvicorn), reverse proxy (Nginx), and security best practices.
+This detailed breakdown provides a clear path for development. Remember to develop iteratively, testing each phase before moving to the next.
