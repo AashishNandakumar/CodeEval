@@ -38,10 +38,14 @@ function CodingSession() {
   const [connectionStatus, setConnectionStatus] = useState("Initializing...");
   const [isEnding, setIsEnding] = useState(false); // State for end session button
   const [error, setError] = useState(null); // General error state
+  const [activeTab, setActiveTab] = useState("description"); // For tab switching in left panel
   const ws = useRef(null);
   const reconnectAttempts = useRef(0);
   const reconnectTimeoutId = useRef(null); // Store reconnect timeout ID
   const codeUpdateQueue = useRef(null); // To store the latest code for debounced sending
+
+  // Determine if connected based on status
+  const isConnected = connectionStatus === "Connected";
 
   // Debounced function to send code updates
   const sendCodeUpdate = useCallback(
@@ -120,6 +124,8 @@ function CodingSession() {
           setLastEvaluation(null); // Clear previous evaluation on new question
           setLastScore(null);
           setError(null);
+          // Switch to "feedback" tab when a question comes in
+          setActiveTab("feedback");
         } else if (message.message_type === "evaluation_result") {
           // Handle the new evaluation result message
           setLastEvaluation(
@@ -131,6 +137,8 @@ function CodingSession() {
           console.log(
             `Received evaluation: Score ${message.score}, Text: ${message.evaluation}`
           );
+          // Switch to "feedback" tab when an evaluation comes in
+          setActiveTab("feedback");
         } else if (message.message_type === "error") {
           const errorMsg = message.detail || "Unknown server error";
           console.error("Server error:", errorMsg);
@@ -271,75 +279,244 @@ function CodingSession() {
     }
   };
 
-  // Determine if actions should be disabled based on connection status
-  const isConnected = connectionStatus === "Connected";
-
   return (
-    <div className="session-container container">
-      <h1>Coding Session: {sessionId}</h1>
-      <p className="status-message">Status: {connectionStatus}</p>
-
-      {/* Display general errors */}
-      {error && <p className="error-message">{error}</p>}
-
-      {/* Display Problem Statement */}
-      <div className="problem-statement">
-        <h2>Problem Statement</h2>
-        <p style={{ whiteSpace: "pre-wrap" }}>{problemStatement}</p>
-      </div>
-
-      <CodeMirror
-        value={code}
-        height="400px"
-        theme={okaidia}
-        extensions={[javascript({ jsx: true })]}
-        onChange={handleCodeChange}
-        style={{
-          textAlign: "left",
-          border: "1px solid #555",
-          borderRadius: "4px",
-        }}
-        readOnly={!isConnected} // Make editor readonly if not connected
-      />
-
-      {/* Display Latest Evaluation Feedback */}
-      {lastEvaluation && (
-        <div
-          className="evaluation-block container"
-          style={{ marginTop: "15px", borderColor: "#646cff" }}
-        >
-          <h4>Feedback on Last Response:</h4>
-          <p style={{ whiteSpace: "pre-wrap" }}>{lastEvaluation}</p>
-          {lastScore !== null && (
-            <p>
-              <strong>Score:</strong> {(lastScore * 100).toFixed(1)}%
-            </p>
-          )}
+    <div className="coding-session-container">
+      <div className="session-header">
+        <div className="session-title">
+          <h1>Coding Session</h1>
+          <span className="session-id">ID: {sessionId}</span>
         </div>
-      )}
-
-      {/* Question/Response Block */}
-      {question && (
-        <div className="question-block" style={{ marginTop: "15px" }}>
-          <h2>Question:</h2>
-          <p style={{ whiteSpace: "pre-wrap" }}>{question}</p>
-          <textarea
-            value={response}
-            onChange={handleResponseChange}
-            rows="6"
-            placeholder="Your response..."
-            disabled={!isConnected} // Disable textarea if not connected
-          />
-          <button onClick={submitResponse} disabled={!response || !isConnected}>
-            Submit Response
+        <div className="session-actions">
+          <button
+            onClick={handleEndSession}
+            disabled={isEnding}
+            className="btn-danger end-session-btn"
+          >
+            {isEnding ? (
+              <span className="loading-indicator">
+                <span className="loading-spinner"></span>
+                Ending...
+              </span>
+            ) : (
+              <>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="btn-icon"
+                >
+                  <path d="M18 6L6 18M6 6l12 12"></path>
+                </svg>
+                End Session
+              </>
+            )}
           </button>
         </div>
-      )}
+      </div>
 
-      <div style={{ marginTop: "20px", textAlign: "right" }}>
-        <button onClick={handleEndSession} disabled={isEnding || !isConnected}>
-          {isEnding ? "Ending..." : "End Session & View Report"}
-        </button>
+      <div className="session-layout">
+        {/* Left Panel: Problem Description & Evaluation with Tabs */}
+        <div className="left-panel">
+          <div className="panel-tabs">
+            <button
+              className={`tab-btn ${
+                activeTab === "description" ? "active" : ""
+              }`}
+              onClick={() => setActiveTab("description")}
+            >
+              Problem
+            </button>
+            <button
+              className={`tab-btn ${activeTab === "feedback" ? "active" : ""}`}
+              onClick={() => setActiveTab("feedback")}
+            >
+              Feedback
+              {(lastEvaluation || question) && (
+                <span className="notification-dot"></span>
+              )}
+            </button>
+          </div>
+
+          <div className="panel-content">
+            {activeTab === "description" && (
+              <div className="problem-description-panel">
+                <h2 className="problem-title">Problem Statement</h2>
+                <div className="problem-content">
+                  <p>{problemStatement}</p>
+
+                  <div className="problem-examples">
+                    <h3>Example:</h3>
+                    <div className="example-box">
+                      <div className="example-item">
+                        <p>
+                          <strong>Input:</strong> "hello"
+                        </p>
+                        <p>
+                          <strong>Output:</strong> "olleh"
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === "feedback" && (
+              <div className="feedback-panel">
+                {question ? (
+                  <div className="interaction-area">
+                    <h2 className="feedback-title">Question</h2>
+                    <div className="question-container">
+                      <p className="question-text">{question}</p>
+                    </div>
+                    <textarea
+                      value={response}
+                      onChange={handleResponseChange}
+                      placeholder="Enter your response here..."
+                      rows="4"
+                      className="response-textarea"
+                      disabled={!isConnected || isEnding}
+                    />
+                    <button
+                      onClick={submitResponse}
+                      disabled={!response.trim() || !isConnected || isEnding}
+                      className="btn-primary submit-btn"
+                    >
+                      Submit Response
+                    </button>
+                  </div>
+                ) : lastEvaluation ? (
+                  <div className="evaluation-feedback">
+                    <h2 className="feedback-title">Evaluation Feedback</h2>
+                    {typeof lastScore === "number" && (
+                      <div className="score-display">
+                        <span className="score-label">Score:</span>
+                        <span className="score-value">
+                          {(lastScore * 100).toFixed(0)}%
+                        </span>
+                      </div>
+                    )}
+                    <div className="evaluation-container">
+                      <pre className="evaluation-text">{lastEvaluation}</pre>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="no-feedback">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="no-feedback-icon"
+                    >
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <line x1="12" y1="8" x2="12" y2="12"></line>
+                      <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                    <p>
+                      No feedback available yet. Start coding to receive
+                      evaluation.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Right Panel: Editor */}
+        <div className="right-panel">
+          <div className="editor-header">
+            <h2 className="editor-title">Code Editor</h2>
+            <div className="editor-tools">
+              <button
+                className="tool-btn"
+                title="Reset Code"
+                disabled={!isConnected || isEnding}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M3 2v6h6"></path>
+                  <path d="M3 13a9 9 0 1 0 3-7.7L3 8"></path>
+                </svg>
+              </button>
+              <button
+                className="tool-btn"
+                title="Fullscreen"
+                disabled={!isConnected || isEnding}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div className="editor-container">
+            <CodeMirror
+              value={code}
+              height="100%"
+              extensions={[javascript({ jsx: true })]}
+              theme={okaidia}
+              onChange={handleCodeChange}
+              className="codemirror-instance"
+              readOnly={!isConnected || isEnding}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Connection Status Bar */}
+      <div className="connection-status-bar">
+        <div className="status-indicator-container">
+          <div
+            className={`status-dot status-${connectionStatus
+              .toLowerCase()
+              .replace(/\s+/g, "-")}`}
+          ></div>
+          <span className="status-text">{connectionStatus}</span>
+        </div>
+        {error && (
+          <div className="error-message">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="error-icon"
+            >
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="8" x2="12" y2="12"></line>
+              <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+            {error}
+          </div>
+        )}
       </div>
     </div>
   );

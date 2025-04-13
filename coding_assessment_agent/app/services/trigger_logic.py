@@ -6,7 +6,7 @@ from app import models
 
 # Configuration for trigger logic
 MIN_TIME_BETWEEN_INTERACTIONS = datetime.timedelta(seconds=60) # Minimum time before asking again
-MIN_CODE_CHANGE_LINES = 5 # Minimum number of lines changed to trigger based on diff
+MIN_CODE_CHANGE_LINES = 2 # Minimum number of lines changed to trigger based on diff
 
 logger = logging.getLogger(__name__) # Get logger instance
 
