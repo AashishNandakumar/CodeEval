@@ -2,6 +2,14 @@
 
 This project provides the backend infrastructure for a real-time coding assessment agent. It uses FastAPI for the web framework, PostgreSQL for the relational database, Redis for caching and message queues (like chat history), ChromaDB as a vector store for similarity searches, and Langchain with OpenAI for AI-driven interactions.
 
+
+![Screenshot 2025-04-20 at 12 29 45 PM](https://github.com/user-attachments/assets/63b18fa2-1357-4dc0-992a-b195499908ea)
+![Screenshot 2025-04-20 at 12 41 01 PM](https://github.com/user-attachments/assets/833ac108-2295-47ea-8c3e-5d7da56b5213)
+![Screenshot 2025-04-20 at 12 44 48 PM](https://github.com/user-attachments/assets/ec07da86-d819-40d2-a864-dd317fe6a237)
+<img width="960" alt="Screenshot 2025-04-20 at 12 45 19 PM" src="https://github.com/user-attachments/assets/2947accd-1734-402d-9a66-00fe7eb7bc26" />
+
+
+
 ## Features
 
 - Real-time code analysis via WebSockets.
